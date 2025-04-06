@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import './App.css';
 import { PhotoWithMetadata } from './lib/types';
 import PhotoUploader from './components/photo-uploader';
 import { Button } from './components/ui/button';

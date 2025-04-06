@@ -33,17 +33,12 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
   const [fileExtension, setFileExtension] = useState<FileExtensions>('jpeg');
   const [quality, setQuality] = useState(100);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [fixedToBottomRight, setFixedToBottomRight] = useState(true);
 
   // Timestamp position state - initial values will be updated after image loads
-  const [position, setPosition] = useState({ x: 550, y: 550 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
-  // Canvas dimensions
-  const [canvasDimensions, setCanvasDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
 
   // Hint state
   const [showHint, setShowHint] = useState(true);
@@ -116,6 +111,31 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
     }
   };
 
+  const positionTimestampAtBottomRight = useCallback(() => {
+    if (!fixedToBottomRight) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const date = photo.metadata.date;
+    const timestamp = formatTimestamp(date);
+
+    // Set font to measure text width
+    ctx.font = `${size}px "Courier New", monospace`;
+    const metrics = ctx.measureText(timestamp);
+    const textWidth = metrics.width;
+
+    // Padding from right and bottom
+    const padding = 30;
+    const x = canvas.width - textWidth - padding;
+    const y = canvas.height - padding;
+
+    setPosition({ x, y });
+  }, [formatTimestamp, photo, size, fixedToBottomRight]);
+
   const downloadImage = () => {
     setIsDownloading(true);
 
@@ -130,9 +150,8 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
 
       // Get original filename without extension
       const originalFilename = photo.file.name.replace(/\.[^/.]+$/, '');
-      const timestamp = formatDate(new Date(), 'YYYYMMDD_HHmmss');
       const extension = fileExtension === 'jpeg' ? 'jpg' : 'png';
-      const filename = `${originalFilename}-timestamp-${timestamp}.${extension}`;
+      const filename = `${originalFilename}-photo-reminisce.${extension}`;
 
       // Use the selected format and quality
       const mimeType = `image/${fileExtension}`;
@@ -178,12 +197,12 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
     }
   };
 
-  // Hide hint after 5 seconds
+  // Hide hint after 3 seconds
   useEffect(() => {
     if (showHint) {
       const timer = setTimeout(() => {
         setShowHint(false);
-      }, 5000);
+      }, 3000);
 
       return () => clearTimeout(timer);
     }
@@ -202,16 +221,16 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
       // Set canvas dimensions to match image
       canvas.width = img.width;
       canvas.height = img.height;
-      setCanvasDimensions({ width: img.width, height: img.height });
 
       // Draw the image
       ctx.drawImage(img, 0, 0);
 
       // Add timestamp
       addTimestamp(ctx);
+      positionTimestampAtBottomRight();
     };
     img.src = photo.dataUrl;
-  }, [addTimestamp, photo]);
+  }, [addTimestamp, photo, positionTimestampAtBottomRight]);
 
   useEffect(() => {
     renderImage();
@@ -419,8 +438,6 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
   const handleTouchEnd = () => {
     if (isDragging) {
       setIsDragging(false);
-      // Force re-render to remove the white box
-      //   renderImage();
     }
   };
 
@@ -462,7 +479,7 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
                     </div>
 
                     <div className='grid gap-2'>
-                      <Label htmlFor='format'>Timestamp Format</Label>
+                      <Label htmlFor='format'>Format</Label>
                       <Select
                         value={format}
                         onValueChange={(value) =>
@@ -506,6 +523,15 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
                         id='border'
                         checked={showBorder}
                         onCheckedChange={setShowBorder}
+                      />
+                    </div>
+
+                    <div className='flex items-center justify-between'>
+                      <Label htmlFor='fixed'>Fix to Bottom Right</Label>
+                      <Switch
+                        id='fixed'
+                        checked={fixedToBottomRight}
+                        onCheckedChange={setFixedToBottomRight}
                       />
                     </div>
                   </div>
@@ -563,27 +589,25 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
       </CardHeader>
       <CardContent className='px-6'>
         <div className='relative max-h-[70vh] overflow-auto flex justify-center'>
-          <div className=''>
-            <canvas
-              ref={canvasRef}
-              className='max-w-full h-auto border rounded-md cursor-move'
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseLeave}
-              onMouseEnter={handleMouseEnter}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            />
-            {/* Only show hint when initially loaded or when hovering */}
-            {(showHint || isHovering) && (
-              <div className='absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md flex items-center transition-opacity'>
-                <Move className='h-3 w-3 mr-1' />
-                Drag timestamp to reposition
-              </div>
-            )}
-          </div>
+          <canvas
+            ref={canvasRef}
+            className='max-w-full h-auto border rounded-md cursor-move'
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            onMouseEnter={handleMouseEnter}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          />
+          {/* Only show hint when initially loaded or when hovering */}
+          {(showHint || isHovering) && (
+            <div className='absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md flex items-center transition-opacity'>
+              <Move className='h-3 w-3 mr-1' />
+              Drag timestamp to reposition
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter>
