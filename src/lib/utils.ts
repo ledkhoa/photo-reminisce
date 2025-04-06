@@ -50,7 +50,7 @@ export function formatDate(date: Date, format: string): string {
   const bracketedTexts: string[] = [];
   const formatWithoutBrackets = format.replace(/\[([^\]]+)\]/g, (_, text) => {
     bracketedTexts.push(text);
-    return `%%BRACKETED${bracketedTexts.length - 1}%%`;
+    return `§§${bracketedTexts.length - 1}§§`;
   });
 
   // Replace tokens
@@ -60,7 +60,7 @@ export function formatDate(date: Date, format: string): string {
 
   // Restore bracketed content
   result = result.replace(
-    /%%BRACKETED(\d+)%%/g,
+    /§§(\d+)§§/g,
     (_, index) => bracketedTexts[Number.parseInt(index)]
   );
 
