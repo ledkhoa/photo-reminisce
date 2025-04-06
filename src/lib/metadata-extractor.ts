@@ -1,4 +1,5 @@
-import type { PhotoWithMetadata } from './types';
+import type { PhotoMetadata, PhotoWithMetadata } from './types';
+import * as ExifReader from 'exifreader';
 
 export async function extractMetadata(file: File): Promise<PhotoWithMetadata> {
   return new Promise((resolve, reject) => {
@@ -12,10 +13,13 @@ export async function extractMetadata(file: File): Promise<PhotoWithMetadata> {
         const img = new Image();
         img.crossOrigin = 'anonymous';
 
-        img.onload = () => {
+        img.onload = async () => {
+          const metadata = await getMetadata(file);
+
           resolve({
             dataUrl,
             file,
+            metadata,
           });
         };
 
@@ -36,4 +40,15 @@ export async function extractMetadata(file: File): Promise<PhotoWithMetadata> {
 
     reader.readAsDataURL(file);
   });
+}
+
+async function getMetadata(file: File): Promise<PhotoMetadata> {
+  const buffer = await file.arrayBuffer();
+  const tags = ExifReader.load(buffer);
+
+  return {
+    date: tags['CreateDate']
+      ? new Date(tags['CreateDate'].description)
+      : new Date(),
+  };
 }

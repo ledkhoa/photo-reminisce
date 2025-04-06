@@ -2,6 +2,8 @@ import { useState } from 'react';
 import './App.css';
 import { PhotoWithMetadata } from './lib/types';
 import PhotoUploader from './components/photo-uploader';
+import { Button } from './components/ui/button';
+import PhotoEditor from './components/photo-editor';
 
 function App() {
   const [photo, setPhoto] = useState<PhotoWithMetadata | null>(null);
@@ -16,7 +18,14 @@ function App() {
         </p>
 
         {photo ? (
-          <div>Photo here</div>
+          <div className='space-y-6'>
+            <PhotoEditor photo={photo} />
+            <div className='flex justify-center'>
+              <Button variant='outline' onClick={() => setPhoto(null)}>
+                Upload Another Photo
+              </Button>
+            </div>
+          </div>
         ) : (
           <PhotoUploader onPhotoSelected={setPhoto} />
         )}
