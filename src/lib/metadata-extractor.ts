@@ -14,7 +14,7 @@ export async function extractMetadata(file: File): Promise<PhotoWithMetadata> {
         img.crossOrigin = 'anonymous';
 
         img.onload = async () => {
-          const metadata = await getMetadata(file);
+          const metadata = await extractExif(file);
 
           resolve({
             dataUrl,
@@ -42,7 +42,7 @@ export async function extractMetadata(file: File): Promise<PhotoWithMetadata> {
   });
 }
 
-async function getMetadata(file: File): Promise<PhotoMetadata> {
+async function extractExif(file: File): Promise<PhotoMetadata> {
   const buffer = await file.arrayBuffer();
   const tags = ExifReader.load(buffer);
 
