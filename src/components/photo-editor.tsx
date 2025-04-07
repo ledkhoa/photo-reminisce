@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { PhotoWithMetadata } from '../lib/types';
+import {
+  FileExtensions,
+  PhotoWithMetadata,
+  TimestampColor,
+  TimestampFormat,
+} from '../lib/types';
 import { formatDate } from '../lib/utils';
 import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
 import { Download, Move, Settings2 } from 'lucide-react';
@@ -19,10 +24,6 @@ import { Label } from './ui/label';
 interface PhotoEditorProps {
   photo: PhotoWithMetadata;
 }
-
-type TimestampColor = 'orange' | 'white' | 'yellow';
-type TimestampFormat = 'standard' | 'dateOnly';
-type FileExtensions = 'jpeg' | 'png';
 
 const PhotoEditor = ({ photo }: PhotoEditorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
