@@ -82,7 +82,7 @@ const PhotoUploader = ({
           const photo = await processFile(file);
           processed.push(photo);
           completed++;
-          setProgress(`Processing ${completed}/${validFiles.length} images...`);
+          setProgress(`Uploading ${completed}/${validFiles.length} photos...`);
         } catch (error) {
           console.error(`Failed to process ${file.name}:`, error);
         }

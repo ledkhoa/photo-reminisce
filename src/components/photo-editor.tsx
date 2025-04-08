@@ -9,7 +9,7 @@ import {
 } from '../lib/types';
 import { formatDate } from '../lib/utils';
 import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
-import { Download, Move, Settings2 } from 'lucide-react';
+import { Download, ImageDown, Move, Settings2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -24,9 +24,10 @@ import { Badge } from './ui/badge';
 
 interface PhotoEditorProps {
   photo: PhotoWithMetadata;
+  photosCount: number;
 }
 
-const PhotoEditor = ({ photo }: PhotoEditorProps) => {
+const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [color, setColor] = useState<TimestampColor>('orange');
   const [format, setFormat] = useState<TimestampFormat>('dateOnly');
@@ -245,6 +246,7 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
     showBorder,
     isDragging,
     renderImage,
+    photosCount,
   ]);
 
   // Drag event handlers
@@ -451,9 +453,9 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
           <div className='flex gap-2'>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant='outline' size='icon'>
-                  <Settings2 className='h-4 w-4' />
-                  <span className='sr-only'>Settings</span>
+                <Button variant='outline'>
+                  <Settings2 className='h-4 w-4 mr-1' />
+                  <p>Settings</p>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className='w-full px-2'>
@@ -583,9 +585,15 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
               </PopoverContent>
             </Popover>
             <Button onClick={downloadImage} disabled={isDownloading}>
-              <Download className='h-4 w-4 mr-2' />
-              {isDownloading ? 'Processing...' : 'Download'}
+              <Download className='h-4 w-4 mr-1' />
+              <p>{isDownloading ? 'Downloading...' : 'Download'}</p>
             </Button>
+            {photosCount > 0 && (
+              <Button disabled={isDownloading}>
+                <ImageDown className='h-4 w-4 mr-1' />
+                <p>{isDownloading ? 'Downloading...' : 'Download All'}</p>
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>

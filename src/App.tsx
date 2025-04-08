@@ -56,7 +56,10 @@ function App() {
           <div className='grid grid-cols-1 lg:grid-cols-3 grid-rows-1 gap-5'>
             {selectedPhotoIndex >= 0 && (
               <div className='lg:col-span-2'>
-                <PhotoEditor photo={photos[selectedPhotoIndex]} />
+                <PhotoEditor
+                  photo={photos[selectedPhotoIndex]}
+                  photosCount={photos.length}
+                />
               </div>
             )}
             <div className='lg:col-span-1'>
