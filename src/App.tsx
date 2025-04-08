@@ -44,7 +44,7 @@ function App() {
   };
 
   return (
-    <main className='container mx-auto py-10 px-4 max-w-4xl'>
+    <main className='container mx-auto py-10 px-4 max-w-6xl'>
       <img src='logo.png' className='h-40 w-auto mx-auto mb-2'/>
       <h1 className='text-3xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-t from-primary to-secondary mb-8'>Photo Reminisce</h1>
       <p className='text-center text-muted-foreground mb-8'>

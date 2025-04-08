@@ -120,8 +120,8 @@ const PhotoUploader = ({
       }}
     >
       <div className='flex flex-col items-center justify-center space-y-4'>
-        <div className='bg-muted rounded-full p-3'>
-          <Upload className='h-8 w-8 text-muted-foreground' />
+        <div className='bg-primary rounded-full p-3'>
+          <Upload className='h-8 w-8 bg-primary text-accent' />
         </div>
         <div>
           <p className='text-lg font-medium'>Drag and drop your photos here</p>
