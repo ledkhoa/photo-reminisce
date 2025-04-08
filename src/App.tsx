@@ -8,7 +8,7 @@ function App() {
   const [photos, setPhotos] = useState<PhotoWithMetadata[]>([]);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number>(-1);
 
-  const handlePhotosSelected = (newPhotos: PhotoWithMetadata[]) => {
+  const handlePhotosUploaded = (newPhotos: PhotoWithMetadata[]) => {
     setPhotos((prevPhotos) => [...prevPhotos, ...newPhotos]);
     setSelectedPhotoIndex(photos.length); // select the first new photo
   };
@@ -71,7 +71,7 @@ function App() {
           </div>
         </div>
       )}
-      <PhotoUploader onPhotosUploaded={handlePhotosSelected} photos={photos} />
+      <PhotoUploader onPhotosUploaded={handlePhotosUploaded} photos={photos} />
     </main>
   );
 }
