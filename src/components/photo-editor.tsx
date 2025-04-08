@@ -23,11 +23,11 @@ import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 
 interface PhotoEditorProps {
-  photo: PhotoWithMetadata;
-  photosCount: number;
+  photos: PhotoWithMetadata[];
+  selectedPhotoIndex: number;
 }
 
-const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
+const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [color, setColor] = useState<TimestampColor>('orange');
   const [format, setFormat] = useState<TimestampFormat>('dateOnly');
@@ -61,7 +61,7 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
 
   const addTimestamp = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      const date = photo.metadata.date || new Date();
+      const date = photos[selectedPhotoIndex].metadata.date || new Date();
       const timestamp = formatTimestamp(date);
 
       // Set font style
@@ -100,7 +100,16 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
         );
       }
     },
-    [color, formatTimestamp, photo, position, size, showBorder, isDragging]
+    [
+      color,
+      formatTimestamp,
+      photos,
+      selectedPhotoIndex,
+      position,
+      size,
+      showBorder,
+      isDragging,
+    ]
   );
 
   const getColorValue = (color: TimestampColor): string => {
@@ -123,7 +132,7 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const date = photo.metadata.date;
+    const date = photos[selectedPhotoIndex].metadata.date;
     const timestamp = formatTimestamp(date);
 
     // Set font to measure text width
@@ -137,7 +146,7 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
     const y = canvas.height - padding;
 
     setPosition({ x, y });
-  }, [formatTimestamp, photo, size, fixedToBottomRight]);
+  }, [formatTimestamp, photos, selectedPhotoIndex, size, fixedToBottomRight]);
 
   const downloadImage = () => {
     setIsDownloading(true);
@@ -152,7 +161,10 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
       }
 
       // Get original filename without extension
-      const originalFilename = photo.file.name.replace(/\.[^/.]+$/, '');
+      const originalFilename = photos[selectedPhotoIndex].file.name.replace(
+        /\.[^/.]+$/,
+        ''
+      );
       const extension = fileExtension === 'jpeg' ? 'jpg' : 'png';
       const filename = `${originalFilename}-photo-reminisce.${extension}`;
 
@@ -232,13 +244,20 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
       addTimestamp(ctx);
       positionTimestampAtBottomRight();
     };
-    img.src = photo.dataUrl;
-  }, [addTimestamp, photo, positionTimestampAtBottomRight, canvasRef]);
+    img.src = photos[selectedPhotoIndex].dataUrl;
+  }, [
+    addTimestamp,
+    photos,
+    selectedPhotoIndex,
+    positionTimestampAtBottomRight,
+    canvasRef,
+  ]);
 
   useEffect(() => {
     renderImage();
   }, [
-    photo,
+    photos,
+    selectedPhotoIndex,
     position,
     color,
     format,
@@ -246,7 +265,6 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
     showBorder,
     isDragging,
     renderImage,
-    photosCount,
   ]);
 
   // Drag event handlers
@@ -265,7 +283,7 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const date = photo.metadata.date || new Date();
+    const date = photos[selectedPhotoIndex].metadata.date || new Date();
     const timestamp = formatTimestamp(date);
     ctx.font = `${size}px "Courier New", monospace`;
     const metrics = ctx.measureText(timestamp);
@@ -314,7 +332,7 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
     // Keep timestamp within canvas bounds
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      const date = photo.metadata.date || new Date();
+      const date = photos[selectedPhotoIndex].metadata.date || new Date();
       const timestamp = formatTimestamp(date);
       const metrics = ctx.measureText(timestamp);
       const textWidth = metrics.width;
@@ -371,7 +389,7 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const date = photo.metadata.date || new Date();
+    const date = photos[selectedPhotoIndex].metadata.date || new Date();
     const timestamp = formatTimestamp(date);
     ctx.font = `${size}px "Courier New", monospace`;
     const metrics = ctx.measureText(timestamp);
@@ -422,7 +440,7 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
     // Keep timestamp within canvas bounds
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      const date = photo.metadata.date || new Date();
+      const date = photos[selectedPhotoIndex].metadata.date || new Date();
       const timestamp = formatTimestamp(date);
       const metrics = ctx.measureText(timestamp);
       const textWidth = metrics.width;
@@ -588,10 +606,14 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
               <Download className='h-4 w-4 mr-1' />
               <p>{isDownloading ? 'Downloading...' : 'Download'}</p>
             </Button>
-            {photosCount > 0 && (
+            {photos.length > 0 && (
               <Button disabled={isDownloading}>
                 <ImageDown className='h-4 w-4 mr-1' />
-                <p>{isDownloading ? 'Downloading...' : 'Download All'}</p>
+                <p>
+                  {isDownloading
+                    ? 'Downloading...'
+                    : `Download All (${photos.length})`}
+                </p>
               </Button>
             )}
           </div>
@@ -599,7 +621,7 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
       </CardHeader>
       <CardContent className='px-6'>
         <Badge className='mb-2' variant='outline'>
-          {photo.file.name}
+          {photos[selectedPhotoIndex].file.name}
         </Badge>
         <div className='relative max-h-[70vh] overflow-auto flex justify-center'>
           <div className='relative'>
@@ -627,10 +649,13 @@ const PhotoEditor = ({ photo, photosCount }: PhotoEditorProps) => {
       </CardContent>
       <CardFooter>
         <div className='text-sm text-muted-foreground'>
-          {photo.metadata.date ? (
+          {photos[selectedPhotoIndex].metadata.date ? (
             <p>
               Photo taken:{' '}
-              {formatDate(photo.metadata.date, 'MMMM D, YYYY [at] h:mm A')}
+              {formatDate(
+                photos[selectedPhotoIndex].metadata.date,
+                'MMMM D, YYYY [at] h:mm A'
+              )}
             </p>
           ) : (
             <p>No date information found in this photo</p>

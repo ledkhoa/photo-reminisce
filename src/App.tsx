@@ -57,8 +57,8 @@ function App() {
             {selectedPhotoIndex >= 0 && (
               <div className='lg:col-span-2'>
                 <PhotoEditor
-                  photo={photos[selectedPhotoIndex]}
-                  photosCount={photos.length}
+                  photos={photos}
+                  selectedPhotoIndex={selectedPhotoIndex}
                 />
               </div>
             )}
