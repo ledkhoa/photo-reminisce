@@ -7,11 +7,14 @@ import { extractMetadata } from '../lib/metadata-extractor';
 import { cn } from '../lib/utils';
 
 interface PhotoUploaderProps {
-  onPhotoSelected: (photos: PhotoWithMetadata[]) => void;
+  onPhotosUploaded: (photos: PhotoWithMetadata[]) => void;
   photos: PhotoWithMetadata[];
 }
 
-const PhotoUploader = ({ onPhotoSelected, photos }: PhotoUploaderProps) => {
+const PhotoUploader = ({
+  onPhotosUploaded: onPhotoSelected,
+  photos,
+}: PhotoUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

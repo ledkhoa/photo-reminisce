@@ -71,7 +71,7 @@ function App() {
           </div>
         </div>
       )}
-      <PhotoUploader onPhotoSelected={handlePhotosSelected} photos={photos} />
+      <PhotoUploader onPhotosUploaded={handlePhotosSelected} photos={photos} />
     </main>
   );
 }
