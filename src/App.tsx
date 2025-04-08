@@ -14,12 +14,28 @@ function App() {
   };
 
   const handleRemovePhoto = (dataUrl: string) => {
-    const index = photos.findIndex((p) => p.dataUrl === dataUrl);
+    const indexToRemove = photos.findIndex((p) => p.dataUrl === dataUrl);
+
+    // Remove the photo
     setPhotos(photos.filter((p) => p.dataUrl !== dataUrl));
-    // TODO: bug when removing photo before selected
-    if (index >= photos.length - 1) {
-      setSelectedPhotoIndex(Math.max(0, photos.length - 2));
+
+    // If we removed the selected photo
+    if (indexToRemove === selectedPhotoIndex) {
+      // If we removed the last photo, select the new last photo
+      if (indexToRemove >= photos.length - 1) {
+        setSelectedPhotoIndex(Math.max(0, photos.length - 2));
+      }
+      // Otherwise keep the same index (which will now point to the next photo)
+      else {
+        setSelectedPhotoIndex(indexToRemove);
+      }
     }
+    // If we removed a photo before the selected one, decrement the index
+    else if (indexToRemove < selectedPhotoIndex) {
+      setSelectedPhotoIndex(selectedPhotoIndex - 1);
+    }
+    // If we removed a photo after the selected one, index stays the same
+    // No action needed here
   };
 
   const handleClearAllPhotos = () => {

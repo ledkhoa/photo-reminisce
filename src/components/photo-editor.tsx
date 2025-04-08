@@ -20,6 +20,7 @@ import {
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
+import { Badge } from './ui/badge';
 
 interface PhotoEditorProps {
   photo: PhotoWithMetadata;
@@ -231,7 +232,7 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
       positionTimestampAtBottomRight();
     };
     img.src = photo.dataUrl;
-  }, [addTimestamp, photo, positionTimestampAtBottomRight]);
+  }, [addTimestamp, photo, positionTimestampAtBottomRight, canvasRef]);
 
   useEffect(() => {
     renderImage();
@@ -589,6 +590,9 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
         </div>
       </CardHeader>
       <CardContent className='px-6'>
+        <Badge className='mb-2' variant='outline'>
+          {photo.file.name}
+        </Badge>
         <div className='relative max-h-[70vh] overflow-auto flex justify-center'>
           <div className='relative'>
             <canvas
