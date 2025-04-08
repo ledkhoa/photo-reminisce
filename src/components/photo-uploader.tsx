@@ -8,9 +8,10 @@ import { cn } from '../lib/utils';
 
 interface PhotoUploaderProps {
   onPhotoSelected: (photos: PhotoWithMetadata[]) => void;
+  photos: PhotoWithMetadata[];
 }
 
-const PhotoUploader = ({ onPhotoSelected }: PhotoUploaderProps) => {
+const PhotoUploader = ({ onPhotoSelected, photos }: PhotoUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +52,6 @@ const PhotoUploader = ({ onPhotoSelected }: PhotoUploaderProps) => {
     return await extractMetadata(processedFile);
   };
 
-  // TODO: Prevent processing the same file (by dataUrl?)
   const handleFiles = async (files: FileList) => {
     setIsLoading(true);
     setError(null);
@@ -59,8 +59,9 @@ const PhotoUploader = ({ onPhotoSelected }: PhotoUploaderProps) => {
 
     const validFiles = Array.from(files).filter(
       (file) =>
-        file.type.startsWith('image/') ||
-        file.name.toLowerCase().match(/\.(heic|heif)$/i)
+        (file.type.startsWith('image/') ||
+          file.name.toLowerCase().match(/\.(heic|heif)$/i)) &&
+        !photos.some((photo) => photo.file.name === file.name) // skip duplicates
     );
 
     if (validFiles.length === 0) {
