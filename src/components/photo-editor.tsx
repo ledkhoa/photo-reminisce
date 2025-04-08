@@ -590,18 +590,20 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
       </CardHeader>
       <CardContent className='px-6'>
         <div className='relative max-h-[70vh] overflow-auto flex justify-center'>
-          <canvas
-            ref={canvasRef}
-            className='max-w-full h-auto border rounded-md cursor-move'
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeave}
-            onMouseEnter={handleMouseEnter}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          />
+          <div className='relative'>
+            <canvas
+              ref={canvasRef}
+              className='max-w-full h-auto border rounded-md cursor-move'
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              onMouseEnter={handleMouseEnter}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            />
+          </div>
           {/* Only show hint when initially loaded or when hovering */}
           {(showHint || isHovering) && (
             <div className='absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md flex items-center transition-opacity'>
