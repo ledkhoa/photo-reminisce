@@ -27,7 +27,7 @@ const PhotoGallery = ({
       <CardHeader>
         <div className='flex justify-between items-center'>
           <h2 className='text-xl font-semibold'>Photo Gallery</h2>
-          <Button variant='outline' onClick={onClearAllPhotos}>
+          <Button variant='destructive' onClick={onClearAllPhotos}>
             Clear All Photos
           </Button>
         </div>
