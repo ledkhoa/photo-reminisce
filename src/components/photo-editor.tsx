@@ -21,6 +21,7 @@ import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
 
 interface PhotoEditorProps {
   photos: PhotoWithMetadata[];
@@ -32,10 +33,12 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
   const [color, setColor] = useState<TimestampColor>('orange');
   const [format, setFormat] = useState<TimestampFormat>('dateOnly');
   const [size, setSize] = useState(128);
-  const [showBorder, setShowBorder] = useState(true);
+  const [timestampShadow, setTimestampShadow] = useState(true);
   const [fileExtension, setFileExtension] = useState<FileExtensions>('jpeg');
   const [quality, setQuality] = useState(100);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const [fixedToBottomRight, setFixedToBottomRight] = useState(true);
 
   // Timestamp position state - initial values will be updated after image loads
@@ -68,12 +71,8 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
       ctx.font = `${size}px "Courier New", monospace`;
       ctx.fillStyle = getColorValue(color);
 
-      // Add border/shadow if enabled
-      if (showBorder) {
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-        ctx.shadowBlur = 3;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
+      if (timestampShadow) {
+        drawTimestampShadow(ctx);
       }
 
       // Draw text at the current position
@@ -107,10 +106,17 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
       selectedPhotoIndex,
       position,
       size,
-      showBorder,
+      timestampShadow,
       isDragging,
     ]
   );
+
+  const drawTimestampShadow = (ctx: CanvasRenderingContext2D) => {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+  };
 
   const getColorValue = (color: TimestampColor): string => {
     switch (color) {
@@ -148,67 +154,112 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
     setPosition({ x, y });
   }, [formatTimestamp, photos, selectedPhotoIndex, size, fixedToBottomRight]);
 
-  const downloadImage = () => {
-    setIsDownloading(true);
+  const processAndDownloadImage = async (
+    photo: PhotoWithMetadata
+  ): Promise<void> => {
+    const filename = photo.file.name.replace(/\.[^/.]+$/, '');
+    // Create and setup temporary canvas
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) throw new Error('Failed to get canvas context');
 
-    try {
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        console.error('Canvas reference not found');
-        alert('Error: Canvas not found. Please try again.');
-        setIsDownloading(false);
-        return;
-      }
+    // Load and draw image
+    await new Promise<void>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        tempCtx.drawImage(img, 0, 0);
+        resolve();
+      };
+      img.onerror = reject;
+      img.src = photo.dataUrl;
+    });
 
-      // Get original filename without extension
-      const originalFilename = photos[selectedPhotoIndex].file.name.replace(
-        /\.[^/.]+$/,
-        ''
-      );
-      const extension = fileExtension === 'jpeg' ? 'jpg' : 'png';
-      const filename = `${originalFilename}-photo-reminisce.${extension}`;
+    // Setup timestamp styling
+    tempCtx.font = `${size}px "Courier New", monospace`;
+    tempCtx.fillStyle = getColorValue(color);
 
-      // Use the selected format and quality
-      const mimeType = `image/${fileExtension}`;
-      const qualityValue = fileExtension === 'jpeg' ? quality / 100 : 1;
+    if (timestampShadow) {
+      drawTimestampShadow(tempCtx);
+    }
 
-      // Standard download method using Blob (no metadata preservation)
-      canvas.toBlob(
+    // Calculate position and draw timestamp
+    const date = photo.metadata.date || new Date();
+    const timestamp = formatTimestamp(date);
+    const metrics = tempCtx.measureText(timestamp);
+    const textWidth = metrics.width;
+    const padding = 30;
+
+    const x = fixedToBottomRight
+      ? tempCanvas.width - textWidth - padding
+      : position.x;
+    const y = fixedToBottomRight ? tempCanvas.height - padding : position.y;
+
+    tempCtx.fillText(timestamp, x, y);
+
+    // Convert to blob and download
+    const extension = fileExtension === 'jpeg' ? 'jpg' : 'png';
+    const mimeType = `image/${fileExtension}`;
+    const qualityValue = fileExtension === 'jpeg' ? quality / 100 : 1;
+
+    return new Promise((resolve, reject) => {
+      tempCanvas.toBlob(
         (blob) => {
           if (!blob) {
-            console.error('Failed to create blob');
-            alert('Error: Failed to create image data. Please try again.');
-            setIsDownloading(false);
+            reject(new Error('Failed to create blob'));
             return;
           }
 
-          // Create object URL from blob
           const url = URL.createObjectURL(blob);
-
-          // Create download link
           const link = document.createElement('a');
-          link.download = filename;
+          link.download = `${filename}-photo-reminisce.${extension}`;
           link.href = url;
-          link.style.display = 'none';
-
-          // Add to document, click, and remove
           document.body.appendChild(link);
           link.click();
-
-          // Clean up
-          setTimeout(() => {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            setIsDownloading(false);
-          }, 100);
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          resolve();
         },
         mimeType,
         qualityValue
       );
+    });
+  };
+
+  const downloadImage = async () => {
+    setIsDownloading(true);
+    try {
+      await processAndDownloadImage(photos[selectedPhotoIndex]);
     } catch (error) {
       console.error('Error in download process:', error);
       alert('Failed to download image. Please try again.');
+    } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const downloadAllImages = async () => {
+    setIsDownloadingAll(true);
+    setDownloadProgress(0);
+
+    try {
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+
+        await processAndDownloadImage(photo);
+
+        setDownloadProgress(Math.round(((i + 1) / photos.length) * 100));
+        // delay to prevent browser throttling
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    } catch (error) {
+      console.error('Error in batch download process:', error);
+      alert('Failed to download all images. Please try again.');
+    } finally {
+      setIsDownloadingAll(false);
+      setDownloadProgress(0);
     }
   };
 
@@ -262,7 +313,7 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
     color,
     format,
     size,
-    showBorder,
+    timestampShadow,
     isDragging,
     renderImage,
   ]);
@@ -543,8 +594,8 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
                       <Label htmlFor='border'>Show Border/Shadow</Label>
                       <Switch
                         id='border'
-                        checked={showBorder}
-                        onCheckedChange={setShowBorder}
+                        checked={timestampShadow}
+                        onCheckedChange={setTimestampShadow}
                       />
                     </div>
 
@@ -606,11 +657,11 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
               <Download className='h-4 w-4 mr-1' />
               <p>{isDownloading ? 'Downloading...' : 'Download'}</p>
             </Button>
-            {photos.length > 0 && (
-              <Button disabled={isDownloading}>
+            {photos.length > 1 && (
+              <Button onClick={downloadAllImages} disabled={isDownloadingAll}>
                 <ImageDown className='h-4 w-4 mr-1' />
                 <p>
-                  {isDownloading
+                  {isDownloadingAll
                     ? 'Downloading...'
                     : `Download All (${photos.length})`}
                 </p>
@@ -623,6 +674,7 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
         <Badge className='mb-2' variant='outline'>
           {photos[selectedPhotoIndex].file.name}
         </Badge>
+
         <div className='relative max-h-[70vh] overflow-auto flex justify-center'>
           <div className='relative'>
             <canvas
@@ -647,7 +699,7 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
           )}
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className='flex flex-col'>
         <div className='text-sm text-muted-foreground'>
           {photos[selectedPhotoIndex].metadata.date ? (
             <p>
@@ -661,6 +713,15 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
             <p>No date information found in this photo</p>
           )}
         </div>
+        {isDownloadingAll && (
+          <div className='w-full'>
+            <div className='flex justify-between text-sm'>
+              <span>Downloading images...</span>
+              <span>{Math.round(downloadProgress)}%</span>
+            </div>
+            <Progress value={downloadProgress} className='h-2' />
+          </div>
+        )}
       </CardFooter>
     </Card>
   );
