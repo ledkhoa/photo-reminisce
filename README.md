@@ -1,54 +1,65 @@
-# React + TypeScript + Vite
+# Photo Reminisce <img src="public/logo.png" height="32" alt="Photo Reminisce Logo">
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Add retro-style timestamps to your digital photos, reminiscent of the 90s digital camera prints. Perfect for preserving memories with that nostalgic touch.
 
-Currently, two official plugins are available:
+🌐 **[Try it live](https://photo-reminisce.netlify.app/)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Inspiration
 
-## Expanding the ESLint configuration
+In this digital age where photos often stay trapped in our phones, my wife and I missed the experience of flipping through physical photo albums with our families. We have fond memories of sitting together, comparing photos, and knowing exactly when each moment was captured thanks to those iconic orange timestamps. Now that we have kids of our own, we wanted to recreate that same feeling - bringing back the charm of dated photos for creating new physical albums that our children can explore and cherish.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Features
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-});
+- 📅 Add customizable timestamps to your photos
+- 🎨 Multiple color options (classic orange, white, yellow)
+- 📏 Adjustable timestamp size and position
+- 📁 Batch process multiple photos at once
+- 💾 Supports JPEG, PNG, HEIC, and other common image formats
+- 🖼️ Preview your changes in real-time
+- 📱 Mobile-friendly interface
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- pnpm (v8 or higher)
+
+### Installation
+
+1. Clone the repository
+
+```bash
+git clone https://github.com/yourusername/photo-reminisce.git
+cd photo-reminisce
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Install dependencies
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x';
-import reactDom from 'eslint-plugin-react-dom';
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-});
+```bash
+pnpm install
 ```
+
+3. Start the development server
+
+```bash
+pnpm dev
+```
+
+The app will be available at `http://localhost:5173`
+
+## Built With
+
+- React + TypeScript
+- Vite
+- TailwindCSS
+- Radix UI
+- shadcn
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Feel free to open an issue or submit a pull request.
