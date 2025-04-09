@@ -48,9 +48,32 @@ async function extractExif(file: File): Promise<PhotoMetadata> {
 
   console.log(tags);
 
+  getExifDate(tags['DateTimeOriginal']!.description.toString());
+
   return {
-    date: tags['CreateDate']
-      ? new Date(tags['CreateDate'].description)
-      : new Date(),
+    date:
+      getExifDate(tags['CreateDate']?.description) ??
+      getExifDate(
+        convertDateString(tags['DateTimeOriginal']?.description || '')
+      ) ??
+      new Date(),
   };
+}
+
+function getExifDate(unsafeDate: string): Date | undefined {
+  const date = new Date(unsafeDate);
+  if (isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return date;
+}
+
+function convertDateString(dateString: string): string {
+  // Convert from YYYY:MM:DD HH:MM:SS to YYYY-MM-DDTHH:MM:SS
+  const [datePart, timePart] = dateString.split(' ');
+  const [year, month, day] = datePart.split(':');
+  const isoString = `${year}-${month}-${day}T${timePart}`;
+
+  return isoString;
 }
