@@ -7,101 +7,96 @@ import { extractMetadata } from '../lib/metadata-extractor';
 import { cn } from '../lib/utils';
 
 interface PhotoUploaderProps {
-  onPhotoSelected: (photo: PhotoWithMetadata) => void;
+  onPhotosUploaded: (photos: PhotoWithMetadata[]) => void;
+  photos: PhotoWithMetadata[];
 }
 
-const PhotoUploader = ({ onPhotoSelected }: PhotoUploaderProps) => {
+const PhotoUploader = ({
+  onPhotosUploaded: onPhotoSelected,
+  photos,
+}: PhotoUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [conversionProgress, setConversionProgress] = useState<string | null>(
-    null
-  );
+  const [progress, setProgress] = useState<string | null>(null);
 
-  const handleFile = async (file: File) => {
-    // Check if it's an image file
-    if (
-      !file.type.startsWith('image/') &&
-      !file.name.toLowerCase().endsWith('.heic') &&
-      !file.name.toLowerCase().endsWith('.heif')
-    ) {
-      setError('Please upload an image file');
+  const processFile = async (file: File): Promise<PhotoWithMetadata> => {
+    // Check if it's a HEIC/HEIF file
+    const isHeic =
+      file.name.toLowerCase().match(/\.(heic|heif)$/i) ||
+      file.type.match(/^image\/(heic|heif)$/i);
+
+    let processedFile = file;
+
+    if (isHeic) {
+      try {
+        const convertedBlob = (await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.9,
+        })) as Blob;
+
+        processedFile = new File(
+          [convertedBlob],
+          file.name.replace(/\.(heic|heif)$/i, '.jpg'),
+          {
+            type: 'image/jpeg',
+            lastModified: file.lastModified,
+          }
+        );
+      } catch (conversionError) {
+        console.error('HEIC conversion error:', conversionError);
+        setError(
+          'Failed to convert HEIC image. Please try another file format.'
+        );
+      }
+    }
+
+    return await extractMetadata(processedFile);
+  };
+
+  const handleFiles = async (files: FileList) => {
+    setIsLoading(true);
+    setError(null);
+    setProgress(null);
+
+    const validFiles = Array.from(files).filter(
+      (file) =>
+        (file.type.startsWith('image/') ||
+          file.name.toLowerCase().match(/\.(heic|heif)$/i)) &&
+        !photos.some((photo) => photo.file.name === file.name) // skip duplicates
+    );
+
+    if (validFiles.length === 0) {
+      setError('Please upload image files');
+      setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-    setConversionProgress(null);
-
     try {
-      // Check if it's a HEIC/HEIF file
-      const isHeic =
-        file.name.toLowerCase().endsWith('.heic') ||
-        file.name.toLowerCase().endsWith('.heif') ||
-        file.type === 'image/heic' ||
-        file.type === 'image/heif';
+      const processed: PhotoWithMetadata[] = [];
+      let completed = 0;
 
-      let processedFile = file;
-
-      if (isHeic) {
-        setConversionProgress('Converting HEIC image...');
-
+      for (const file of validFiles) {
         try {
-          // Convert HEIC to JPEG
-          const convertedBlob = (await heic2any({
-            blob: file,
-            toType: 'image/jpeg',
-            quality: 0.9,
-          })) as Blob;
-
-          // Create a new File from the converted Blob
-          processedFile = new File(
-            [convertedBlob],
-            file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'),
-            {
-              type: 'image/jpeg',
-              lastModified: file.lastModified,
-            }
-          );
-
-          setConversionProgress('HEIC conversion complete');
-        } catch (conversionError) {
-          console.error('HEIC conversion error:', conversionError);
-          setError(
-            'Failed to convert HEIC image. Please try another file format.'
-          );
-          setIsLoading(false);
-          return;
+          const photo = await processFile(file);
+          processed.push(photo);
+          completed++;
+          setProgress(`Uploading ${completed}/${validFiles.length} photos...`);
+        } catch (error) {
+          console.error(`Failed to process ${file.name}:`, error);
         }
       }
 
-      // Process the file (original or converted)
-      const photoWithMetadata = await extractMetadata(processedFile);
-      onPhotoSelected(photoWithMetadata);
+      if (processed.length > 0) {
+        onPhotoSelected(processed);
+      }
     } catch (err) {
-      setError('Failed to process image. Please try another one.');
+      setError('Failed to process images. Please try again.');
       console.error(err);
     } finally {
       setIsLoading(false);
-      setConversionProgress(null);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files.length > 0) {
-      handleFile(e.dataTransfer.files[0]);
+      setProgress(null);
     }
   };
 
@@ -113,21 +108,28 @@ const PhotoUploader = ({ onPhotoSelected }: PhotoUploaderProps) => {
           ? 'border-primary bg-primary/5'
           : 'border-muted-foreground/20'
       )}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        handleFiles(e.dataTransfer.files);
+      }}
     >
       <div className='flex flex-col items-center justify-center space-y-4'>
-        <div className='bg-muted rounded-full p-3'>
-          <Upload className='h-8 w-8 text-muted-foreground' />
+        <div className='bg-primary rounded-full p-3'>
+          <Upload className='h-8 w-8 bg-primary text-accent' />
         </div>
         <div>
-          <p className='text-lg font-medium'>Drag and drop your photo here</p>
+          <p className='text-lg font-medium'>Drag and drop your photos here</p>
           <p className='text-sm text-muted-foreground mt-1'>
             or click to browse from your device
           </p>
           <p className='text-xs text-muted-foreground mt-1'>
-            Supports JPG, PNG, GIF, WEBP, and HEIC formats
+            Supports multiple files: JPG, PNG, GIF, WEBP, and HEIC formats
           </p>
         </div>
         <input
@@ -135,9 +137,10 @@ const PhotoUploader = ({ onPhotoSelected }: PhotoUploaderProps) => {
           id='file-upload'
           className='hidden'
           accept='image/*,.heic,.heif'
+          multiple
           onChange={(e) => {
-            if (e.target.files?.[0]) {
-              handleFile(e.target.files[0]);
+            if (e.target.files?.length) {
+              handleFiles(e.target.files);
             }
           }}
         />
@@ -146,7 +149,7 @@ const PhotoUploader = ({ onPhotoSelected }: PhotoUploaderProps) => {
           onClick={() => document.getElementById('file-upload')?.click()}
           disabled={isLoading}
         >
-          {isLoading ? conversionProgress || 'Processing...' : 'Select Photo'}
+          {isLoading ? progress || 'Processing...' : 'Select Photos'}
         </Button>
         {error && <p className='text-destructive text-sm'>{error}</p>}
       </div>

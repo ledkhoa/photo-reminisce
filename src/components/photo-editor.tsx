@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { PhotoWithMetadata } from '../lib/types';
+import {
+  FileExtensions,
+  PhotoWithMetadata,
+  TimestampColor,
+  TimestampFormat,
+} from '../lib/types';
 import { formatDate } from '../lib/utils';
 import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
-import { Download, Move, Settings2 } from 'lucide-react';
+import { Download, ImageDown, Move, Settings2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -15,24 +20,25 @@ import {
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
+import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
 
 interface PhotoEditorProps {
-  photo: PhotoWithMetadata;
+  photos: PhotoWithMetadata[];
+  selectedPhotoIndex: number;
 }
 
-type TimestampColor = 'orange' | 'white' | 'yellow';
-type TimestampFormat = 'standard' | 'dateOnly';
-type FileExtensions = 'jpeg' | 'png';
-
-const PhotoEditor = ({ photo }: PhotoEditorProps) => {
+const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [color, setColor] = useState<TimestampColor>('orange');
   const [format, setFormat] = useState<TimestampFormat>('dateOnly');
   const [size, setSize] = useState(128);
-  const [showBorder, setShowBorder] = useState(true);
+  const [timestampShadow, setTimestampShadow] = useState(true);
   const [fileExtension, setFileExtension] = useState<FileExtensions>('jpeg');
   const [quality, setQuality] = useState(100);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const [fixedToBottomRight, setFixedToBottomRight] = useState(true);
 
   // Timestamp position state - initial values will be updated after image loads
@@ -58,19 +64,15 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
 
   const addTimestamp = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      const date = photo.metadata.date || new Date();
+      const date = photos[selectedPhotoIndex].metadata.date || new Date();
       const timestamp = formatTimestamp(date);
 
       // Set font style
       ctx.font = `${size}px "Courier New", monospace`;
       ctx.fillStyle = getColorValue(color);
 
-      // Add border/shadow if enabled
-      if (showBorder) {
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-        ctx.shadowBlur = 3;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
+      if (timestampShadow) {
+        drawTimestampShadow(ctx);
       }
 
       // Draw text at the current position
@@ -97,8 +99,24 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
         );
       }
     },
-    [color, formatTimestamp, photo, position, size, showBorder, isDragging]
+    [
+      color,
+      formatTimestamp,
+      photos,
+      selectedPhotoIndex,
+      position,
+      size,
+      timestampShadow,
+      isDragging,
+    ]
   );
+
+  const drawTimestampShadow = (ctx: CanvasRenderingContext2D) => {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+  };
 
   const getColorValue = (color: TimestampColor): string => {
     switch (color) {
@@ -120,7 +138,7 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const date = photo.metadata.date;
+    const date = photos[selectedPhotoIndex].metadata.date;
     const timestamp = formatTimestamp(date);
 
     // Set font to measure text width
@@ -134,66 +152,114 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
     const y = canvas.height - padding;
 
     setPosition({ x, y });
-  }, [formatTimestamp, photo, size, fixedToBottomRight]);
+  }, [formatTimestamp, photos, selectedPhotoIndex, size, fixedToBottomRight]);
 
-  const downloadImage = () => {
-    setIsDownloading(true);
+  const processAndDownloadImage = async (
+    photo: PhotoWithMetadata
+  ): Promise<void> => {
+    const filename = photo.file.name.replace(/\.[^/.]+$/, '');
+    // Create and setup temporary canvas
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) throw new Error('Failed to get canvas context');
 
-    try {
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        console.error('Canvas reference not found');
-        alert('Error: Canvas not found. Please try again.');
-        setIsDownloading(false);
-        return;
-      }
+    // Load and draw image
+    await new Promise<void>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        tempCtx.drawImage(img, 0, 0);
+        resolve();
+      };
+      img.onerror = reject;
+      img.src = photo.dataUrl;
+    });
 
-      // Get original filename without extension
-      const originalFilename = photo.file.name.replace(/\.[^/.]+$/, '');
-      const extension = fileExtension === 'jpeg' ? 'jpg' : 'png';
-      const filename = `${originalFilename}-photo-reminisce.${extension}`;
+    // Setup timestamp styling
+    tempCtx.font = `${size}px "Courier New", monospace`;
+    tempCtx.fillStyle = getColorValue(color);
 
-      // Use the selected format and quality
-      const mimeType = `image/${fileExtension}`;
-      const qualityValue = fileExtension === 'jpeg' ? quality / 100 : 1;
+    if (timestampShadow) {
+      drawTimestampShadow(tempCtx);
+    }
 
-      // Standard download method using Blob (no metadata preservation)
-      canvas.toBlob(
+    // Calculate position and draw timestamp
+    const date = photo.metadata.date || new Date();
+    const timestamp = formatTimestamp(date);
+    const metrics = tempCtx.measureText(timestamp);
+    const textWidth = metrics.width;
+    const padding = 30;
+
+    const x = fixedToBottomRight
+      ? tempCanvas.width - textWidth - padding
+      : position.x;
+    const y = fixedToBottomRight ? tempCanvas.height - padding : position.y;
+
+    tempCtx.fillText(timestamp, x, y);
+
+    // Convert to blob and download
+    const extension = fileExtension === 'jpeg' ? 'jpg' : 'png';
+    const mimeType = `image/${fileExtension}`;
+    const qualityValue = fileExtension === 'jpeg' ? quality / 100 : 1;
+
+    return new Promise((resolve, reject) => {
+      tempCanvas.toBlob(
         (blob) => {
           if (!blob) {
-            console.error('Failed to create blob');
-            alert('Error: Failed to create image data. Please try again.');
-            setIsDownloading(false);
+            reject(new Error('Failed to create blob'));
             return;
           }
 
-          // Create object URL from blob
           const url = URL.createObjectURL(blob);
-
-          // Create download link
           const link = document.createElement('a');
-          link.download = filename;
+          link.download = `${filename}-photo-reminisce.${extension}`;
           link.href = url;
-          link.style.display = 'none';
-
-          // Add to document, click, and remove
           document.body.appendChild(link);
           link.click();
-
-          // Clean up
-          setTimeout(() => {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            setIsDownloading(false);
-          }, 100);
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          resolve();
         },
         mimeType,
         qualityValue
       );
+    });
+  };
+
+  const downloadImage = async () => {
+    setIsDownloading(true);
+    try {
+      await processAndDownloadImage(photos[selectedPhotoIndex]);
     } catch (error) {
       console.error('Error in download process:', error);
       alert('Failed to download image. Please try again.');
+    } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const downloadAllImages = async () => {
+    setIsDownloadingAll(true);
+    setDownloadProgress(0);
+
+    try {
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+
+        await processAndDownloadImage(photo);
+
+        setDownloadProgress(Math.round(((i + 1) / photos.length) * 100));
+        // delay to prevent browser throttling
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    } catch (error) {
+      console.error('Error in batch download process:', error);
+      alert('Failed to download all images. Please try again.');
+    } finally {
+      setIsDownloadingAll(false);
+      setDownloadProgress(0);
     }
   };
 
@@ -229,18 +295,25 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
       addTimestamp(ctx);
       positionTimestampAtBottomRight();
     };
-    img.src = photo.dataUrl;
-  }, [addTimestamp, photo, positionTimestampAtBottomRight]);
+    img.src = photos[selectedPhotoIndex].dataUrl;
+  }, [
+    addTimestamp,
+    photos,
+    selectedPhotoIndex,
+    positionTimestampAtBottomRight,
+    canvasRef,
+  ]);
 
   useEffect(() => {
     renderImage();
   }, [
-    photo,
+    photos,
+    selectedPhotoIndex,
     position,
     color,
     format,
     size,
-    showBorder,
+    timestampShadow,
     isDragging,
     renderImage,
   ]);
@@ -261,7 +334,7 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const date = photo.metadata.date || new Date();
+    const date = photos[selectedPhotoIndex].metadata.date || new Date();
     const timestamp = formatTimestamp(date);
     ctx.font = `${size}px "Courier New", monospace`;
     const metrics = ctx.measureText(timestamp);
@@ -310,7 +383,7 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
     // Keep timestamp within canvas bounds
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      const date = photo.metadata.date || new Date();
+      const date = photos[selectedPhotoIndex].metadata.date || new Date();
       const timestamp = formatTimestamp(date);
       const metrics = ctx.measureText(timestamp);
       const textWidth = metrics.width;
@@ -367,7 +440,7 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const date = photo.metadata.date || new Date();
+    const date = photos[selectedPhotoIndex].metadata.date || new Date();
     const timestamp = formatTimestamp(date);
     ctx.font = `${size}px "Courier New", monospace`;
     const metrics = ctx.measureText(timestamp);
@@ -418,7 +491,7 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
     // Keep timestamp within canvas bounds
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      const date = photo.metadata.date || new Date();
+      const date = photos[selectedPhotoIndex].metadata.date || new Date();
       const timestamp = formatTimestamp(date);
       const metrics = ctx.measureText(timestamp);
       const textWidth = metrics.width;
@@ -444,14 +517,14 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
   return (
     <Card>
       <CardHeader>
-        <div className='flex justify-between items-center'>
+        <div className='grid sm:flex justify-between items-center'>
           <h2 className='text-xl font-semibold'>Edit Photo</h2>
-          <div className='flex gap-2'>
+          <div className='flex gap-2 mt-1 sm:mt-0'>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant='outline' size='icon'>
-                  <Settings2 className='h-4 w-4' />
-                  <span className='sr-only'>Settings</span>
+                <Button variant='outline'>
+                  <Settings2 className='h-4 w-4 mr-1' />
+                  <p className='sr-only sm:not-sr-only'>Settings</p>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className='w-full px-2'>
@@ -521,8 +594,8 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
                       <Label htmlFor='border'>Show Border/Shadow</Label>
                       <Switch
                         id='border'
-                        checked={showBorder}
-                        onCheckedChange={setShowBorder}
+                        checked={timestampShadow}
+                        onCheckedChange={setTimestampShadow}
                       />
                     </div>
 
@@ -581,26 +654,42 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
               </PopoverContent>
             </Popover>
             <Button onClick={downloadImage} disabled={isDownloading}>
-              <Download className='h-4 w-4 mr-2' />
-              {isDownloading ? 'Processing...' : 'Download'}
+              <Download className='h-4 w-4 mr-1' />
+              <p>{isDownloading ? 'Downloading...' : 'Download'}</p>
             </Button>
+            {photos.length > 1 && (
+              <Button onClick={downloadAllImages} disabled={isDownloadingAll}>
+                <ImageDown className='h-4 w-4 mr-1' />
+                <p>
+                  {isDownloadingAll
+                    ? 'Downloading...'
+                    : `Download All (${photos.length})`}
+                </p>
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
       <CardContent className='px-6'>
+        <Badge className='mb-2' variant='outline'>
+          {photos[selectedPhotoIndex].file.name}
+        </Badge>
+
         <div className='relative max-h-[70vh] overflow-auto flex justify-center'>
-          <canvas
-            ref={canvasRef}
-            className='max-w-full h-auto border rounded-md cursor-move'
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeave}
-            onMouseEnter={handleMouseEnter}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          />
+          <div className='relative'>
+            <canvas
+              ref={canvasRef}
+              className='max-w-full h-auto border rounded-md cursor-move'
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              onMouseEnter={handleMouseEnter}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            />
+          </div>
           {/* Only show hint when initially loaded or when hovering */}
           {(showHint || isHovering) && (
             <div className='absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md flex items-center transition-opacity'>
@@ -610,17 +699,29 @@ const PhotoEditor = ({ photo }: PhotoEditorProps) => {
           )}
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className='flex flex-col'>
         <div className='text-sm text-muted-foreground'>
-          {photo.metadata.date ? (
+          {photos[selectedPhotoIndex].metadata.date ? (
             <p>
               Photo taken:{' '}
-              {formatDate(photo.metadata.date, 'MMMM D, YYYY [at] h:mm A')}
+              {formatDate(
+                photos[selectedPhotoIndex].metadata.date,
+                'MMMM D, YYYY [at] h:mm A'
+              )}
             </p>
           ) : (
             <p>No date information found in this photo</p>
           )}
         </div>
+        {isDownloadingAll && (
+          <div className='w-full'>
+            <div className='flex justify-between text-sm'>
+              <span>Downloading images...</span>
+              <span>{Math.round(downloadProgress)}%</span>
+            </div>
+            <Progress value={downloadProgress} className='h-2' />
+          </div>
+        )}
       </CardFooter>
     </Card>
   );

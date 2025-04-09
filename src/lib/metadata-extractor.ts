@@ -46,6 +46,8 @@ async function extractExif(file: File): Promise<PhotoMetadata> {
   const buffer = await file.arrayBuffer();
   const tags = ExifReader.load(buffer);
 
+  console.log(tags);
+
   return {
     date: tags['CreateDate']
       ? new Date(tags['CreateDate'].description)
