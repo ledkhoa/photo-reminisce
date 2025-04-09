@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import heic2any from 'heic2any';
 import { extractMetadata } from '../lib/metadata-extractor';
 import { cn } from '../lib/utils';
+import { toast } from 'sonner';
 
 interface PhotoUploaderProps {
   onPhotosUploaded: (photos: PhotoWithMetadata[]) => void;
@@ -45,6 +46,7 @@ const PhotoUploader = ({
           }
         );
       } catch (conversionError) {
+        toast.error('Failed to convert HEIC image.');
         console.error('HEIC conversion error:', conversionError);
         setError(
           'Failed to convert HEIC image. Please try another file format.'
@@ -84,15 +86,17 @@ const PhotoUploader = ({
           completed++;
           setProgress(`Uploading ${completed}/${validFiles.length} photos...`);
         } catch (error) {
-          console.error(`Failed to process ${file.name}:`, error);
+          toast.error(`Failed to process ${file.name}.`);
+          console.error('File processing error:', error);
         }
       }
 
       if (processed.length > 0) {
         onPhotoSelected(processed);
       }
+      toast.success(`${validFiles.length > 1 ? 'Photos' : 'Photo'} uploaded.`);
     } catch (err) {
-      setError('Failed to process images. Please try again.');
+      toast.error('Failed to process images. Please try again.');
       console.error(err);
     } finally {
       setIsLoading(false);
