@@ -3,6 +3,7 @@ import { PhotoWithMetadata } from './lib/types';
 import PhotoUploader from './components/photo-uploader';
 import PhotoEditor from './components/photo-editor';
 import PhotoGallery from './components/photo-gallery';
+import { Toaster } from './components/ui/sonner';
 
 function App() {
   const [photos, setPhotos] = useState<PhotoWithMetadata[]>([]);
@@ -45,6 +46,7 @@ function App() {
 
   return (
     <main className='container mx-auto py-10 px-4 max-w-6xl'>
+      <Toaster position='top-right' richColors />
       <img src='logo.png' className='h-40 w-auto mx-auto mb-2' />
       <h1 className='text-3xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-t from-primary to-secondary mb-8'>
         Photo Reminisce
