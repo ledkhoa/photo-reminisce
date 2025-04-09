@@ -517,14 +517,14 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
   return (
     <Card>
       <CardHeader>
-        <div className='flex justify-between items-center'>
+        <div className='grid sm:flex justify-between items-center'>
           <h2 className='text-xl font-semibold'>Edit Photo</h2>
-          <div className='flex gap-2'>
+          <div className='flex gap-2 mt-1 sm:mt-0'>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant='outline'>
                   <Settings2 className='h-4 w-4 mr-1' />
-                  <p>Settings</p>
+                  <p className='sr-only sm:not-sr-only'>Settings</p>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className='w-full px-2'>
