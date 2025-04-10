@@ -22,6 +22,7 @@ import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
+import { toast } from 'sonner';
 
 interface PhotoEditorProps {
   photos: PhotoWithMetadata[];
@@ -232,9 +233,10 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
     setIsDownloading(true);
     try {
       await processAndDownloadImage(photos[selectedPhotoIndex]);
+      toast.success('Photo downloaded.');
     } catch (error) {
       console.error('Error in download process:', error);
-      alert('Failed to download image. Please try again.');
+      toast.error('Failed to download Photo. Please try again.');
     } finally {
       setIsDownloading(false);
     }
@@ -254,9 +256,10 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
         // delay to prevent browser throttling
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
+      toast.success(`Downloaded ${photos.length} photos.`);
     } catch (error) {
       console.error('Error in batch download process:', error);
-      alert('Failed to download all images. Please try again.');
+      toast.error('Failed to download Photo. Please try again.');
     } finally {
       setIsDownloadingAll(false);
       setDownloadProgress(0);
