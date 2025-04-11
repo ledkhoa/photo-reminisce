@@ -236,7 +236,7 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
       toast.success('Photo downloaded.');
     } catch (error) {
       console.error('Error in download process:', error);
-      toast.error('Failed to download Photo. Please try again.');
+      toast.error('Failed to download photo. Please try again.');
     } finally {
       setIsDownloading(false);
     }
@@ -259,7 +259,7 @@ const PhotoEditor = ({ photos, selectedPhotoIndex }: PhotoEditorProps) => {
       toast.success(`Downloaded ${photos.length} photos.`);
     } catch (error) {
       console.error('Error in batch download process:', error);
-      toast.error('Failed to download Photo. Please try again.');
+      toast.error('Failed to download photo. Please try again.');
     } finally {
       setIsDownloadingAll(false);
       setDownloadProgress(0);
